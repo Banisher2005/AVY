@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVY — Streaming Live RAG Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-group">
+        <div class="logo-badge">AVY</div>
+        <div class="title-meta">
+          <h1>Streaming Live RAG Assistant</h1>
+          <span class="subtext">Samsung PRISM GenAI Hackathon (Theme 04) • Evolution of AVI</span>
+        </div>
+      </div>
+      <div class="system-status" id="system-status">
+        <span class="status-indicator"></span>
+        <span class="status-text" id="status-label">Initializing...</span>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Input, Scenarios, Controller State -->
+      <section class="panel control-panel">
+        <div class="panel-header">
+          <h2>1. Live Speech Simulation & Input</h2>
+        </div>
+
+        <div class="scenario-selector">
+          <label for="scenario-select">Demo Scenarios (A to F):</label>
+          <div class="select-row">
+            <select id="scenario-select">
+              <option value="" disabled selected>Select a benchmark scenario...</option>
+            </select>
+            <button class="btn btn-secondary" id="btn-run-scenario">▶ Run Scenario</button>
+          </div>
+        </div>
+
+        <div class="custom-input-box">
+          <label for="input-query">Or Type Natural Utterance / Chunks:</label>
+          <div class="input-row">
+            <input type="text" id="input-query" placeholder="e.g. Tell me about Samsung's latest semiconductor processor..." autocomplete="off">
+            <button class="btn btn-primary" id="btn-send">Send</button>
+          </div>
+          <div class="chunk-buttons">
+            <span class="hint">Simulate audio chunks:</span>
+            <button class="btn-chip" data-chunk="Tell me about Samsung's">Chunk 1: "Tell me about Samsung's"</button>
+            <button class="btn-chip" data-chunk="latest processor">Chunk 2: "latest processor"</button>
+            <button class="btn-chip" data-chunk="and compare battery efficiency with S23">Chunk 3: "and compare battery efficiency..."</button>
+          </div>
+        </div>
+
+        <!-- Live Transcript Monitor -->
+        <div class="transcript-monitor">
+          <div class="box-header">
+            <h3>Live Transcript Stream</h3>
+            <span class="badge" id="transcript-count">0 chunks</span>
+          </div>
+          <div class="transcript-feed" id="transcript-feed">
+            <div class="empty-state">Waiting for spoken audio chunks...</div>
+          </div>
+        </div>
+
+        <!-- 3-State Retrieval Controller Badge -->
+        <div class="controller-card">
+          <div class="box-header">
+            <h3>Retrieval Controller State</h3>
+            <span class="controller-tag" id="controller-badge">IDLE</span>
+          </div>
+          <div class="controller-reason" id="controller-reason">
+            Controller evaluates transcript completeness in real time.
+          </div>
+          <div class="early-retrieval-flag" id="early-retrieval-flag" style="display: none;">
+            ⚡ Early Retrieval Triggered (Before utterance completed)
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Multi-Query, Evidence, Grounded Answer -->
+      <section class="panel output-panel">
+        <div class="panel-header">
+          <h2>2. Decomposition, Evidence & Grounded Response</h2>
+          <div class="timings-pills" id="timings-bar">
+            <span class="timing-pill" id="ttft-pill">TTFT: -- ms</span>
+            <span class="timing-pill" id="total-pill">Total: -- ms</span>
+          </div>
+        </div>
+
+        <!-- Multi-Intent Decomposition -->
+        <div class="decomposition-box" id="decomposition-box">
+          <h3>Multi-Intent Decomposition</h3>
+          <div class="subqueries-list" id="subqueries-list">
+            <div class="empty-subtext">No active query decomposition.</div>
+          </div>
+        </div>
+
+        <!-- Retrieved Evidence & RRF -->
+        <div class="evidence-box" id="evidence-box">
+          <div class="box-header">
+            <h3>Retrieved Evidence (RRF & Reranked)</h3>
+            <span class="badge" id="evidence-count">0 chunks</span>
+          </div>
+          <div class="evidence-cards" id="evidence-cards">
+            <div class="empty-subtext">Evidence candidates will appear here upon retrieval.</div>
+          </div>
+        </div>
+
+        <!-- Grounded Streaming Answer -->
+        <div class="response-box" id="response-box">
+          <div class="box-header">
+            <h3>Grounded Streaming Answer</h3>
+            <span class="status-badge" id="streaming-indicator" style="display: none;">Streaming...</span>
+          </div>
+          <div class="response-text" id="response-text">
+            <div class="empty-state">Synthesized answer with citations will stream here...</div>
+          </div>
+        </div>
+
+        <!-- Citations Traceability -->
+        <div class="citations-box" id="citations-box">
+          <h3>Citations & Provenance</h3>
+          <div class="citations-list" id="citations-list">
+            <div class="empty-subtext">No citations generated yet.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Telemetry -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>Session ID: <strong id="session-display">--</strong></span>
+      </div>
+      <div class="footer-center">
+        <span>Architecture: <strong>AVI-derived Router & Gateway + Theme 04 RAG Engine</strong></span>
+      </div>
+      <div class="footer-right">
+        <button class="btn btn-small" id="btn-clear-session">Clear Session</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

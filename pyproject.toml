@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "avy"
+version = "0.1.0"
+description = "Streaming Live RAG Assistant for Samsung PRISM GenAI Hackathon (Theme 04)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Abhinav Sanjeev", email = "abhinavsanjeev47@gmail.com" }
+]
+requires-python = ">=3.10"
+keywords = ["rag", "streaming", "live-rag", "samsung-prism", "faiss", "rrf", "reranking", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "faiss-cpu>=1.7.0",
+    "fastembed>=0.3.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+avy = "avy.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/avy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
