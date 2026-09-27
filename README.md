@@ -1,5 +1,7 @@
 # AVY — Streaming Live RAG Assistant
 
+Video link : https://drive.google.com/file/d/1uVeuRLFEjg_w_902f3jcKOu31ays_KnL/view?usp=sharing
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-41%20passing-brightgreen.svg)](#testing)
