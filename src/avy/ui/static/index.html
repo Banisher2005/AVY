@@ -1,562 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AVY — Streaming Live RAG Assistant</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AVY — Streaming Live RAG</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="app-layout">
-    <!-- Top Global Header -->
-    <header class="app-header">
-      <div class="header-brand">
-        <div class="brand-badge">AVY</div>
-        <div class="brand-info">
-          <div class="brand-title">
-            <h1>AVY <span class="accent-text">Streaming Live RAG</span></h1>
-            <span class="version-tag">PROD v1.0 • Theme 04</span>
-          </div>
-          <p class="brand-sub">Samsung PRISM GenAI Hackathon 3rd Edition • Evolution of AVI</p>
-        </div>
-      </div>
 
-      <!-- Real-time Live Connection & Status Pills -->
-      <div class="header-status-group">
-        <div class="status-pill status-live" id="conn-status-pill">
-          <span class="live-dot pulse"></span>
-          <span id="conn-status-text">LIVE CONNECTED</span>
-        </div>
-        <div class="status-pill" id="provider-pill">
-          <span class="pill-label">MODEL:</span>
-          <span class="pill-val" id="header-model-val">qwen3:4b</span>
-        </div>
-        <div class="status-pill" id="corpus-pill">
-          <span class="pill-label">CORPUS:</span>
-          <span class="pill-val" id="header-corpus-val">32 Chunks (FAISS)</span>
-        </div>
-        <div class="status-pill" id="session-pill">
-          <span class="pill-label">SESSION:</span>
-          <span class="pill-val font-mono" id="header-session-val">--</span>
-          <button class="btn-icon" id="btn-copy-session" title="Copy Session ID">📋</button>
-        </div>
-      </div>
-    </header>
+<!-- ═══════════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-left">
+    <span class="header-logo">AVY</span>
+    <span class="header-tagline">Streaming Live RAG</span>
+    <span class="header-badge">Samsung PRISM Theme 04</span>
+  </div>
+  <div class="header-center">
+    <div id="conn-pill" class="conn-pill">
+      <span id="conn-dot" class="conn-dot"></span>
+      <span id="conn-label">Connecting...</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="header-info" id="header-model">—</span>
+    <span class="header-info" id="header-corpus">—</span>
+    <span class="header-session-id" id="header-session-id" title="Session ID"></span>
+    <button class="btn-icon" id="btn-clear" title="Clear session">↺ Reset</button>
+  </div>
+</header>
 
-    <!-- Main 3-Column Command Center Grid -->
-    <main class="command-grid">
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN LAYOUT
+════════════════════════════════════════════════════════════════ -->
+<div class="layout">
 
-      <!-- COLUMN 1: Speech Simulation, Benchmark Scenarios, Live Transcript & Controller -->
-      <aside class="panel col-left">
-        <div class="panel-section-title">
-          <span class="section-icon">🎙️</span>
-          <h2>Speech Input & Scenarios</h2>
-        </div>
+  <!-- ── LEFT COLUMN: Voice + Conversation ───────────────────── -->
+  <main class="primary">
 
-        <!-- 1-Click Benchmark Scenarios Suite (A to F) -->
-        <div class="card demo-scenarios-card">
-          <div class="card-header">
-            <h3>1-Click Benchmark Scenarios</h3>
-            <span class="tag tag-accent">Theme 04 Matrix</span>
-          </div>
-          <p class="card-desc">Instantly test standard spoken scenarios across all controller states:</p>
-          
-          <div class="scenario-buttons-grid">
-            <button class="btn-scenario" data-scenario="A1">
-              <span class="sc-badge sc-wait-to-ret">A</span>
-              <div class="sc-meta">
-                <span class="sc-title">Early Retrieval</span>
-                <span class="sc-sub">Incomplete to Complete trigger</span>
-              </div>
-            </button>
-            <button class="btn-scenario" data-scenario="B1">
-              <span class="sc-badge sc-no-ret">B</span>
-              <div class="sc-meta">
-                <span class="sc-title">Conversational Fast-Path</span>
-                <span class="sc-sub">NO_RETRIEVE greeting</span>
-              </div>
-            </button>
-            <button class="btn-scenario" data-scenario="C1">
-              <span class="sc-badge sc-wait">C</span>
-              <div class="sc-meta">
-                <span class="sc-title">Incomplete Utterance</span>
-                <span class="sc-sub">WAIT state / speech pause</span>
-              </div>
-            </button>
-            <button class="btn-scenario" data-scenario="D1">
-              <span class="sc-badge sc-ret">D</span>
-              <div class="sc-meta">
-                <span class="sc-title">Compound Multi-Intent</span>
-                <span class="sc-sub">Decomposition & RRF Fusion</span>
-              </div>
-            </button>
-            <button class="btn-scenario" data-scenario="E1">
-              <span class="sc-badge sc-refine">E</span>
-              <div class="sc-meta">
-                <span class="sc-title">Anaphora Refinement</span>
-                <span class="sc-sub">Multi-turn pronoun resolution</span>
-              </div>
-            </button>
-            <button class="btn-scenario" data-scenario="F1">
-              <span class="sc-badge sc-ret">F</span>
-              <div class="sc-meta">
-                <span class="sc-title">Comparative Deep-Dive</span>
-                <span class="sc-sub">Exynos 2400 vs Snapdragon</span>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Incremental Speech Chunk Simulator -->
-        <div class="card audio-chunk-card">
-          <div class="card-header">
-            <h3>Simulate Speech Audio Chunks</h3>
-            <span class="tag">Streaming</span>
-          </div>
-          <p class="card-desc">Click chunk steps to simulate live streaming transcription:</p>
-          
-          <div class="chunk-flow-buttons">
-            <button class="btn-stream-chunk" data-chunk="Tell me about Samsung's">
-              <span class="chunk-num">1</span>
-              <span class="chunk-text">"Tell me about Samsung's"</span>
-            </button>
-            <button class="btn-stream-chunk" data-chunk="latest semiconductor processor">
-              <span class="chunk-num">2</span>
-              <span class="chunk-text">"latest semiconductor processor"</span>
-            </button>
-            <button class="btn-stream-chunk" data-chunk="and compare it with the previous generation">
-              <span class="chunk-num">3</span>
-              <span class="chunk-text">"and compare it with previous generation"</span>
-            </button>
-          </div>
-
-          <div class="custom-speech-input">
-            <div class="input-wrap">
-              <input type="text" id="custom-utterance-input" placeholder="Type utterance or spoken chunk..." autocomplete="off">
-              <button class="btn btn-primary" id="btn-submit-utterance">
-                <span>Send</span> ⏎
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Live Transcript Monitor -->
-        <div class="card transcript-monitor-card">
-          <div class="card-header">
-            <h3>Live Transcript Stream</h3>
-            <span class="badge font-mono" id="transcript-chunk-count">0 chunks</span>
-          </div>
-          <div class="transcript-feed" id="transcript-feed">
-            <div class="empty-state-muted">Awaiting incoming spoken audio chunks...</div>
-          </div>
-        </div>
-
-        <!-- 3-State Retrieval Controller Live Display -->
-        <div class="card controller-state-card" id="controller-state-card">
-          <div class="card-header">
-            <h3>Retrieval Controller</h3>
-            <span class="tag">Gating Engine</span>
-          </div>
-          
-          <div class="controller-states-trio">
-            <div class="state-indicator-box state-box-wait" id="state-box-wait">
-              <span class="state-icon">⏳</span>
-              <span class="state-name">WAIT</span>
-            </div>
-            <div class="state-indicator-box state-box-retrieve" id="state-box-retrieve">
-              <span class="state-icon">⚡</span>
-              <span class="state-name">RETRIEVE</span>
-            </div>
-            <div class="state-indicator-box state-box-noretrieve" id="state-box-noretrieve">
-              <span class="state-icon">💬</span>
-              <span class="state-name">NO_RETRIEVE</span>
-            </div>
-          </div>
-
-          <div class="controller-explanation-box">
-            <div class="explanation-title">Decision Explanation:</div>
-            <div class="explanation-text" id="controller-explanation-text">
-              Controller evaluates transcript completeness in real-time.
-            </div>
-          </div>
-
-          <!-- Early Retrieval Banner & Dual Bar Visualizer -->
-          <div class="early-retrieval-box" id="early-retrieval-banner" style="display: none;">
-            <div class="early-banner-header">
-              <span class="lightning">⚡</span>
-              <strong>Early Retrieval Triggered</strong>
-              <span class="lead-time-pill" id="early-lead-time-pill">+340ms Lead Time</span>
-            </div>
-            <div class="dual-timeline-container">
-              <div class="timeline-row">
-                <span class="timeline-label">Speech Audio:</span>
-                <div class="timeline-track">
-                  <div class="timeline-bar bar-speech" style="width: 100%;">Speaking...</div>
-                </div>
-              </div>
-              <div class="timeline-row">
-                <span class="timeline-label">AVY Retrieval:</span>
-                <div class="timeline-track">
-                  <div class="timeline-bar bar-retrieval" style="width: 65%;">Started Mid-Utterance</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-
-      <!-- COLUMN 2: Central Conversational Workspace & Streaming Answer -->
-      <section class="panel col-center">
-        <div class="panel-section-title">
-          <span class="section-icon">💬</span>
-          <h2>Conversational Live RAG Stream</h2>
-          <div class="panel-actions">
-            <button class="btn btn-ghost btn-sm" id="btn-reset-session" title="Start New Session">
-              🔄 Clear Session
-            </button>
-          </div>
-        </div>
-
-        <!-- Active Conversation Thread -->
-        <div class="conversation-thread" id="conversation-thread">
-          <div class="welcome-banner">
-            <div class="welcome-badge">AVY LIVE STREAMING RAG</div>
-            <h3>Autonomous Conversational RAG with Early Retrieval</h3>
-            <p>Speak naturally, supply incomplete chunks, ask compound questions, or converse casually. AVY gates retrieval, decomposes intents, fuses vector evidence with RRF, and streams grounded responses with deterministic citations.</p>
-            <div class="welcome-hints">
-              <span class="hint-tag">⚡ Early Retrieval</span>
-              <span class="hint-tag">🔀 Multi-Intent Decomposition</span>
-              <span class="hint-tag">📊 RRF Evidence Fusion</span>
-              <span class="hint-tag">🎯 Two-Stage Reranking</span>
-              <span class="hint-tag">🔗 Provenance Citations</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Floating Streaming Status Bar -->
-        <div class="streaming-status-bar" id="streaming-status-bar" style="display: none;">
-          <div class="status-left">
-            <span class="spinner-dot"></span>
-            <span id="streaming-status-label">Synthesizing grounded response...</span>
-          </div>
-          <div class="status-right font-mono" id="streaming-live-timer">0 ms</div>
-        </div>
-      </section>
-
-
-      <!-- COLUMN 3: Technical Deep-Dive, Pipeline Trace & Inspector Tabs -->
-      <aside class="panel col-right">
-        <!-- Tab Navigation -->
-        <div class="tabs-header">
-          <button class="tab-btn active" data-tab="tab-pipeline">
-            <span class="tab-icon">🔄</span> Trace
-          </button>
-          <button class="tab-btn" data-tab="tab-decomposition">
-            <span class="tab-icon">🔀</span> Decomposition
-          </button>
-          <button class="tab-btn" data-tab="tab-fusion">
-            <span class="tab-icon">📊</span> RRF & Rerank
-          </button>
-          <button class="tab-btn" data-tab="tab-analytics">
-            <span class="tab-icon">⚡</span> Analytics
-          </button>
-          <button class="tab-btn" data-tab="tab-telemetry">
-            <span class="tab-icon">📡</span> Telemetry
-          </button>
-        </div>
-
-        <!-- TAB 1: 10-Stage Real-Time Pipeline Trace -->
-        <div class="tab-content active" id="tab-pipeline">
-          <div class="tab-section-intro">
-            <h3>10-Stage Pipeline Lifecycle</h3>
-            <p>Real-time visual execution state for each utterance:</p>
-          </div>
-
-          <div class="pipeline-stages-list" id="pipeline-stages-list">
-            <!-- Stage 1 -->
-            <div class="stage-item" id="stage-transcript" data-stage="transcript">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">01</span>
-                <span class="stage-title">Transcript Chunk</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-transcript">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-transcript">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 2 -->
-            <div class="stage-item" id="stage-controller" data-stage="controller">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">02</span>
-                <span class="stage-title">Retrieval Controller</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-controller">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-controller">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 3 -->
-            <div class="stage-item" id="stage-refinement" data-stage="refinement">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">03</span>
-                <span class="stage-title">Query Refinement</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-refinement">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-refinement">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 4 -->
-            <div class="stage-item" id="stage-decomposition" data-stage="decomposition">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">04</span>
-                <span class="stage-title">Intent Decomposition</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-decomposition">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-decomposition">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 5 -->
-            <div class="stage-item" id="stage-vector_retrieval" data-stage="vector_retrieval">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">05</span>
-                <span class="stage-title">Vector Retrieval</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-vector_retrieval">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-vector_retrieval">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 6 -->
-            <div class="stage-item" id="stage-fusion" data-stage="fusion">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">06</span>
-                <span class="stage-title">RRF Evidence Fusion</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-fusion">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-fusion">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 7 -->
-            <div class="stage-item" id="stage-reranking" data-stage="reranking">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">07</span>
-                <span class="stage-title">Two-Stage Reranking</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-reranking">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-reranking">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 8 -->
-            <div class="stage-item" id="stage-grounding" data-stage="grounding">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">08</span>
-                <span class="stage-title">Grounding Engine</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-grounding">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-grounding">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 9 -->
-            <div class="stage-item" id="stage-synthesis" data-stage="synthesis">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">09</span>
-                <span class="stage-title">Grounded Synthesis</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-synthesis">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-synthesis">idle</span>
-              </div>
-            </div>
-
-            <!-- Stage 10 -->
-            <div class="stage-item" id="stage-streaming" data-stage="streaming">
-              <div class="stage-left">
-                <span class="stage-dot"></span>
-                <span class="stage-num">10</span>
-                <span class="stage-title">Streaming Response</span>
-              </div>
-              <div class="stage-right">
-                <span class="stage-time" id="stage-time-streaming">--</span>
-                <span class="stage-badge badge-idle" id="stage-badge-streaming">idle</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 2: Multi-Intent Decomposition Explorer -->
-        <div class="tab-content" id="tab-decomposition">
-          <div class="tab-section-intro">
-            <h3>Multi-Intent Decomposition</h3>
-            <p>Utterance decomposed into targeted subqueries:</p>
-          </div>
-          <div class="decomposition-view" id="decomposition-view">
-            <div class="empty-subtext">No active query decomposition. Run a query or scenario.</div>
-          </div>
-        </div>
-
-        <!-- TAB 3: Evidence Fusion (RRF) & Reranking Explorer -->
-        <div class="tab-content" id="tab-fusion">
-          <div class="tab-section-intro">
-            <h3>Evidence Fusion & Scoring</h3>
-            <p>Score reordering through 3 stages: Vector -> RRF -> Reranking:</p>
-          </div>
-          <div class="evidence-fusion-view" id="evidence-fusion-view">
-            <div class="empty-subtext">No evidence retrieved yet.</div>
-          </div>
-        </div>
-
-        <!-- TAB 4: Performance Analytics & TTFT Gauges -->
-        <div class="tab-content" id="tab-analytics">
-          <div class="tab-section-intro">
-            <h3>Latency & TTFT Metrics</h3>
-            <p>Granular pipeline phase timings:</p>
-          </div>
-          
-          <div class="metrics-kpi-grid">
-            <div class="kpi-box">
-              <span class="kpi-label">TIME TO FIRST TOKEN</span>
-              <span class="kpi-val" id="kpi-ttft">-- ms</span>
-            </div>
-            <div class="kpi-box">
-              <span class="kpi-label">TOTAL LATENCY</span>
-              <span class="kpi-val" id="kpi-total">-- ms</span>
-            </div>
-            <div class="kpi-box">
-              <span class="kpi-label">EARLY RETRIEVAL LEAD</span>
-              <span class="kpi-val accent-val" id="kpi-lead">-- ms</span>
-            </div>
-            <div class="kpi-box">
-              <span class="kpi-label">SOURCES GROUNDED</span>
-              <span class="kpi-val" id="kpi-sources">--</span>
-            </div>
-          </div>
-
-          <div class="timing-breakdown-card">
-            <h4>Phase Timing Breakdown</h4>
-            <div class="timing-bars-list" id="timing-bars-list">
-              <div class="timing-bar-item">
-                <span class="t-name">Query Refinement:</span>
-                <span class="t-val font-mono" id="t-refine-val">-- ms</span>
-              </div>
-              <div class="timing-bar-item">
-                <span class="t-name">Decomposition:</span>
-                <span class="t-val font-mono" id="t-decomp-val">-- ms</span>
-              </div>
-              <div class="timing-bar-item">
-                <span class="t-name">Vector Retrieval + Fusion:</span>
-                <span class="t-val font-mono" id="t-retrieval-val">-- ms</span>
-              </div>
-              <div class="timing-bar-item">
-                <span class="t-name">Two-Stage Reranking:</span>
-                <span class="t-val font-mono" id="t-rerank-val">-- ms</span>
-              </div>
-              <div class="timing-bar-item">
-                <span class="t-name">Synthesis Stream:</span>
-                <span class="t-val font-mono" id="t-synthesis-val">-- ms</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 5: Live Structured Telemetry Event Log -->
-        <div class="tab-content" id="tab-telemetry">
-          <div class="tab-section-intro">
-            <h3>Live Telemetry Stream</h3>
-            <p>Thread-safe structured JSON event stream:</p>
-          </div>
-          <div class="telemetry-log-feed" id="telemetry-log-feed">
-            <div class="empty-subtext">Waiting for telemetry events...</div>
-          </div>
-        </div>
-      </aside>
-    </main>
-
-    <!-- Slide-Over Evidence Inspector Drawer / Modal -->
-    <div class="modal-backdrop" id="evidence-modal-backdrop" style="display: none;">
-      <div class="evidence-modal" id="evidence-modal">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <span class="citation-tag" id="modal-citation-tag">[1]</span>
-            <h3 id="modal-title">Evidence Chunk Inspector</h3>
-          </div>
-          <button class="btn-close-modal" id="btn-close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-meta-grid">
-            <div class="meta-item">
-              <span class="meta-label">SOURCE DOCUMENT:</span>
-              <span class="meta-value font-mono" id="modal-source-file">--</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">CHUNK ID:</span>
-              <span class="meta-value font-mono" id="modal-chunk-id">--</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">VECTOR SCORE:</span>
-              <span class="meta-value font-mono" id="modal-vector-score">--</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">RRF SCORE:</span>
-              <span class="meta-value font-mono" id="modal-rrf-score">--</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">RERANK SCORE:</span>
-              <span class="meta-value font-mono" id="modal-rerank-score">--</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">MATCHED SUBQUERIES:</span>
-              <span class="meta-value" id="modal-matched-queries">--</span>
-            </div>
-          </div>
-
-          <div class="modal-text-section">
-            <h4>Raw Grounded Evidence Text:</h4>
-            <div class="modal-chunk-text" id="modal-chunk-text">--</div>
-          </div>
+    <!-- State Banner -->
+    <div id="state-banner" class="state-banner state-idle">
+      <div class="state-banner-inner">
+        <div id="state-icon" class="state-icon">🎙</div>
+        <div class="state-text-group">
+          <div id="state-label" class="state-label">Ready</div>
+          <div id="state-sub" class="state-sub">Press the microphone to speak, or type below</div>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Footer Bar -->
-    <footer class="app-footer">
-      <div class="footer-col">
-        <span>Samsung PRISM Hackathon <strong>Theme 04: Streaming Live RAG</strong></span>
+    <!-- Live Transcript (shows while listening) -->
+    <div id="transcript-area" class="transcript-area hidden">
+      <div class="transcript-header">
+        <span class="transcript-dot"></span> Hearing...
       </div>
-      <div class="footer-col">
-        <span>Status: <strong class="text-emerald">OPERATIONAL</strong> • Pipeline Stages: <strong>10 Active</strong></span>
-      </div>
-      <div class="footer-col font-mono text-muted">
-        <span>Gating: WAIT / RETRIEVE / NO_RETRIEVE • RRF k=60 • bge-small</span>
-      </div>
-    </footer>
-  </div>
+      <div id="live-transcript" class="live-transcript">—</div>
+    </div>
 
-  <script src="/static/app.js"></script>
+    <!-- Conversation Thread -->
+    <div id="conversation" class="conversation">
+      <div class="welcome">
+        <div class="welcome-icon">🎙</div>
+        <h2 class="welcome-title">Speak to AVY</h2>
+        <p class="welcome-desc">
+          Ask about Samsung semiconductors, Galaxy devices, Exynos processors, foldable displays, or battery technology.
+          Speak naturally — AVY handles incomplete sentences, compound questions, and follow-ups.
+        </p>
+        <div class="welcome-pills">
+          <span class="pill">⚡ Early Retrieval</span>
+          <span class="pill">🧠 Multi-Intent</span>
+          <span class="pill">🔗 Grounded Citations</span>
+          <span class="pill">🔊 Voice Response</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voice Control -->
+    <div class="voice-control-area">
+      <div class="mic-wrapper">
+        <button id="mic-btn" class="mic-btn" title="Tap to speak">
+          <svg id="mic-icon" class="mic-svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+          </svg>
+          <div id="mic-ring" class="mic-ring"></div>
+        </button>
+        <div id="mic-label" class="mic-label">TAP TO SPEAK</div>
+      </div>
+
+      <!-- TTS control (shows while speaking) -->
+      <div id="tts-control" class="tts-control hidden">
+        <div class="tts-wave">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <button id="btn-stop-tts" class="btn-stop-tts">■ Stop</button>
+      </div>
+    </div>
+
+    <!-- Text Fallback -->
+    <div class="text-input-area">
+      <div class="divider"><span>or type</span></div>
+      <div class="text-row">
+        <input
+          id="text-input"
+          class="text-input"
+          type="text"
+          placeholder="Ask AVY anything..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="btn-send" class="btn-send">Send</button>
+      </div>
+    </div>
+
+    <!-- No-mic fallback notice -->
+    <div id="no-mic-notice" class="no-mic-notice hidden">
+      <span>⚠️ Microphone not available in this browser — using text input mode.</span>
+    </div>
+
+  </main>
+
+  <!-- ── RIGHT COLUMN: Technical Panels ─────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Demo Scenarios -->
+    <div class="panel" id="panel-scenarios">
+      <button class="panel-header" onclick="togglePanel('scenarios')">
+        <span>🎯 Demo Scenarios</span>
+        <span class="panel-chevron" id="chevron-scenarios">▼</span>
+      </button>
+      <div class="panel-body" id="body-scenarios">
+        <p class="panel-desc">One-click runs through the production pipeline — no fake data.</p>
+        <div class="scenario-grid" id="scenario-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio Chunk Simulator -->
+    <div class="panel" id="panel-simulator">
+      <button class="panel-header" onclick="togglePanel('simulator')">
+        <span>📡 Chunk Simulator</span>
+        <span class="panel-chevron" id="chevron-simulator">▼</span>
+      </button>
+      <div class="panel-body" id="body-simulator">
+        <p class="panel-desc">
+          Simulates speech arriving in incremental chunks — demonstrating the utterance buffer.
+          All chunks below are ONE utterance.
+        </p>
+        <div class="chunk-list">
+          <div class="chunk-row">
+            <button class="btn-chunk" data-chunk="Tell me about Samsung's">Chunk 1: "Tell me about Samsung's"</button>
+          </div>
+          <div class="chunk-row">
+            <button class="btn-chunk" data-chunk="latest semiconductor processor">Chunk 2: "latest semiconductor processor"</button>
+          </div>
+          <div class="chunk-row">
+            <button class="btn-chunk final" data-chunk="and compare it with the previous generation" data-final="true">
+              Chunk 3 (final): "and compare it with the previous generation"
+            </button>
+          </div>
+        </div>
+        <button class="btn-secondary" id="btn-clear-chunks" style="margin-top:8px">Clear Buffer</button>
+      </div>
+    </div>
+
+    <!-- Pipeline Trace -->
+    <div class="panel" id="panel-trace">
+      <button class="panel-header" onclick="togglePanel('trace')">
+        <span>🔄 Pipeline Trace</span>
+        <span class="panel-chevron" id="chevron-trace">▼</span>
+      </button>
+      <div class="panel-body" id="body-trace">
+        <div id="trace-container" class="trace-container">
+          <!-- stages rendered by JS -->
+          <div class="trace-empty">Run a query to see the pipeline trace.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Evidence Panel -->
+    <div class="panel" id="panel-evidence">
+      <button class="panel-header" onclick="togglePanel('evidence')">
+        <span>📚 Retrieved Evidence</span>
+        <span class="panel-chevron" id="chevron-evidence">▼</span>
+      </button>
+      <div class="panel-body" id="body-evidence">
+        <div id="evidence-container" class="evidence-container">
+          <div class="trace-empty">Evidence will appear after retrieval.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics -->
+    <div class="panel" id="panel-analytics">
+      <button class="panel-header" onclick="togglePanel('analytics')">
+        <span>📊 Latency Analytics</span>
+        <span class="panel-chevron" id="chevron-analytics">▼</span>
+      </button>
+      <div class="panel-body" id="body-analytics">
+        <div class="analytics-grid">
+          <div class="kpi-box">
+            <div class="kpi-label">TTFT</div>
+            <div class="kpi-val" id="kpi-ttft">—</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Total</div>
+            <div class="kpi-val" id="kpi-total">—</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Retrieval</div>
+            <div class="kpi-val" id="kpi-retrieval">—</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Reranking</div>
+            <div class="kpi-val" id="kpi-reranking">—</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Sources</div>
+            <div class="kpi-val" id="kpi-sources">—</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Controller</div>
+            <div class="kpi-val" id="kpi-controller">—</div>
+          </div>
+        </div>
+        <div class="timing-details" id="timing-details"></div>
+      </div>
+    </div>
+
+  </aside>
+
+</div><!-- /layout -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EVIDENCE INSPECTOR MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="modal-backdrop" class="modal-backdrop hidden" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span id="modal-citation-tag" class="modal-citation-tag">[1]</span>
+      <span id="modal-title" class="modal-title">Evidence Inspector</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-meta">
+      <span class="modal-meta-item"><b>Source:</b> <span id="modal-source">—</span></span>
+      <span class="modal-meta-item"><b>Chunk:</b> <span id="modal-chunk-id">—</span></span>
+    </div>
+    <div class="modal-scores">
+      <div class="score-item">
+        <div class="score-label">Vector</div>
+        <div class="score-val" id="modal-vector-score">—</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">RRF</div>
+        <div class="score-val" id="modal-rrf-score">—</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">Rerank</div>
+        <div class="score-val" id="modal-rerank-score">—</div>
+      </div>
+    </div>
+    <div class="modal-text-label">Evidence Text</div>
+    <div id="modal-text" class="modal-text">—</div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
 </body>
 </html>
