@@ -279,7 +279,10 @@ class StreamingLiveRAGEngine:
             return
 
         # Handle Controller State: RETRIEVE
-        lead_time_ms = 340.0 if decision.is_early_retrieval else 0.0
+        # Early lead time = actual wall-clock elapsed since pipeline start at the moment retrieval
+        # is triggered. For early retrieval this represents real pipeline overhead that runs in
+        # parallel with remaining audio chunks; for standard retrieval this is near-zero.
+        lead_time_ms = round(pipeline_sw.elapsed_ms, 2) if decision.is_early_retrieval else 0.0
         self.telemetry.log(
             event=TelemetryEventNames.RETRIEVAL_TRIGGERED,
             session_id=sid,

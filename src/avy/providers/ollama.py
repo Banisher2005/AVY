@@ -97,7 +97,7 @@ class OllamaProvider(BaseProvider):
             raise ProviderError(f"Ollama error: {err}")
 
         total_ms = (time.perf_counter() - t0) * 1000.0
-        text = raw_json.get("response", "") or raw_json.get("thinking", "")
+        text = raw_json.get("response", "")
         metrics = ResponseMetrics(
             total_duration_ms=total_ms,
             prompt_tokens=raw_json.get("prompt_eval_count"),
@@ -144,7 +144,9 @@ class OllamaProvider(BaseProvider):
                     except json.JSONDecodeError:
                         continue
 
-                    chunk_text = chunk_obj.get("response", "") or chunk_obj.get("thinking", "")
+                    # Only yield final response tokens; suppress internal thinking/CoT tokens
+                    # from Qwen3 and other reasoning models (thinking field = internal CoT).
+                    chunk_text = chunk_obj.get("response", "")
                     if chunk_text:
                         if first_token_time is None:
                             first_token_time = time.perf_counter()

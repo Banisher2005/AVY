@@ -49,12 +49,8 @@ def main() -> None:
     if args.output_json:
         out_path = Path(args.output_json)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        # Convert TestResult objects to dicts
-        serializable_report = dict(report)
-        serializable_report["results"] = [
-            r.__dict__ if hasattr(r, "__dict__") else r for r in report["results"]
-        ]
-        out_path.write_text(json.dumps(serializable_report, indent=2), encoding="utf-8")
+        # report is already fully serializable (test_results contains dicts from TestResult.to_dict())
+        out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(f"Report saved to {out_path.resolve()}")
 
 

@@ -660,15 +660,31 @@ function appendTelemetryRecord(record) {
 function openEvidenceModal(citationIndex) {
   let ev = null;
 
-  // Look up in cached evidence
+  // Look up in cached evidence by array position (evidence is 1-indexed in the pipeline)
   if (cachedEvidence && cachedEvidence.length >= citationIndex && citationIndex > 0) {
     ev = cachedEvidence[citationIndex - 1];
   }
 
-  // Fallback to citation metadata
+  // Fallback to citation metadata — find by index property, not array position
+  // (LLM may generate [3] while only [1],[3] exist, so position lookup would be wrong)
   let cit = null;
-  if (cachedCitations && cachedCitations.length >= citationIndex && citationIndex > 0) {
-    cit = cachedCitations[citationIndex - 1];
+  if (cachedCitations && cachedCitations.length > 0 && citationIndex > 0) {
+    cit = cachedCitations.find(c => c.index === citationIndex) || null;
+  }
+
+  if (!ev && !cit) {
+    // Citation index out of range — show graceful "not found" message
+    modalCitationTag.textContent = `[${citationIndex}]`;
+    modalTitle.textContent = `Citation [${citationIndex}] — source not loaded`;
+    modalSourceFile.textContent = '--';
+    modalChunkId.textContent = '--';
+    modalVectorScore.textContent = '--';
+    modalRrfScore.textContent = '--';
+    modalRerankScore.textContent = '--';
+    modalMatchedQueries.textContent = '--';
+    modalChunkText.textContent = 'The evidence for this citation is not available in the current session cache. This can happen if the answer references a citation index beyond the retrieved evidence set.';
+    evidenceModalBackdrop.style.display = 'flex';
+    return;
   }
 
   modalCitationTag.textContent = `[${citationIndex}]`;
