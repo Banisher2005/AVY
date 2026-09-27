@@ -13,7 +13,8 @@ _STRICT_GROUNDING_SYSTEM_PROMPT = (
     "Do NOT fabricate facts, extrapolate unverifiable claims, or invent citations. "
     "When stating factual details from an evidence source, cite the source number using [1], [2], etc. "
     "If the provided evidence does not contain sufficient information to answer the question, "
-    "clearly state that the information is not available in the corpus."
+    "clearly state that the information is not available in the corpus. "
+    "Provide a concise, direct spoken response in 2-4 sentences without meta-commentary or thinking tags."
 )
 
 

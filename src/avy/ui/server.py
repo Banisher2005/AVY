@@ -12,6 +12,8 @@ Architecture:
 
 import asyncio
 import json
+import queue
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -395,20 +397,61 @@ async def _run_pipeline(
     session_id: str,
     utterance_id: str,
 ) -> None:
-    """Run the RAG pipeline and stream all events over the WebSocket."""
-    await websocket.send_json({"type": "pipeline.started", "utterance_id": utterance_id})
+    """Run the RAG pipeline in a worker thread and stream all events over the WebSocket
+
+    without blocking the asyncio event loop.
+    """
     try:
-        for event in engine.process_transcript_stream(
-            transcript_chunk=text,
-            session_id=session_id,
-            is_final_chunk=True,
-        ):
+        await websocket.send_json({"type": "pipeline.started", "utterance_id": utterance_id})
+    except Exception:
+        return
+
+    q: queue.Queue[dict[str, Any] | None] = queue.Queue()
+    stop_event = threading.Event()
+
+    def _worker() -> None:
+        try:
+            for event in engine.process_transcript_stream(
+                transcript_chunk=text,
+                session_id=session_id,
+                is_final_chunk=True,
+            ):
+                if stop_event.is_set():
+                    break
+                q.put(event)
+        except Exception as exc:
+            q.put({"type": "error", "message": str(exc), "stage": "pipeline"})
+        finally:
+            q.put(None)  # Sentinel to denote completion
+
+    thread = threading.Thread(target=_worker, name=f"rag_{utterance_id}", daemon=True)
+    thread.start()
+
+    try:
+        while True:
+            # Check queue without blocking event loop
+            try:
+                event = await asyncio.to_thread(q.get, timeout=0.05)
+            except queue.Empty:
+                continue
+
+            if event is None:
+                break
+
             await websocket.send_json(event)
-            await asyncio.sleep(0)  # yield to event loop between events
+    except (WebSocketDisconnect, RuntimeError):
+        stop_event.set()
     except Exception as exc:
-        await websocket.send_json({"type": "error", "message": str(exc), "stage": "pipeline"})
+        stop_event.set()
+        try:
+            await websocket.send_json({"type": "error", "message": str(exc), "stage": "pipeline"})
+        except Exception:
+            pass
     finally:
-        await websocket.send_json({"type": "pipeline.completed", "utterance_id": utterance_id})
+        try:
+            await websocket.send_json({"type": "pipeline.completed", "utterance_id": utterance_id})
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

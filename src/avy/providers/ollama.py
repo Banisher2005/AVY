@@ -27,7 +27,7 @@ class OllamaProvider(BaseProvider):
         self,
         host: str = "http://127.0.0.1:11434",
         model: str = "qwen3:4b",
-        timeout: float = 30.0,
+        timeout: float = 90.0,
         temperature: float = 0.1,
     ) -> None:
         self.host = host.rstrip("/")
@@ -72,6 +72,7 @@ class OllamaProvider(BaseProvider):
             "stream": False,
             "options": {
                 "temperature": request.temperature,
+                "num_predict": 350,
             },
         }
         if request.extra_options:
@@ -97,7 +98,8 @@ class OllamaProvider(BaseProvider):
             raise ProviderError(f"Ollama error: {err}")
 
         total_ms = (time.perf_counter() - t0) * 1000.0
-        text = raw_json.get("response", "")
+        # Use response; fallback to thinking if response was empty (e.g. reasoning token exhaustion)
+        text = raw_json.get("response") or raw_json.get("thinking", "")
         metrics = ResponseMetrics(
             total_duration_ms=total_ms,
             prompt_tokens=raw_json.get("prompt_eval_count"),
@@ -116,6 +118,7 @@ class OllamaProvider(BaseProvider):
             "stream": True,
             "options": {
                 "temperature": request.temperature,
+                "num_predict": 350,
             },
         }
         if request.extra_options:
@@ -133,6 +136,8 @@ class OllamaProvider(BaseProvider):
         first_token_time: float | None = None
         prompt_tokens: int | None = None
         completion_tokens: int | None = None
+        thinking_buffer: list[str] = []
+        has_yielded_response = False
 
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
@@ -144,10 +149,15 @@ class OllamaProvider(BaseProvider):
                     except json.JSONDecodeError:
                         continue
 
-                    # Only yield final response tokens; suppress internal thinking/CoT tokens
-                    # from Qwen3 and other reasoning models (thinking field = internal CoT).
+                    # Buffer thinking in case the model never transitions to response
+                    think_chunk = chunk_obj.get("thinking", "")
+                    if think_chunk:
+                        thinking_buffer.append(think_chunk)
+
+                    # Only yield response tokens to suppress reasoning CoT
                     chunk_text = chunk_obj.get("response", "")
                     if chunk_text:
+                        has_yielded_response = True
                         if first_token_time is None:
                             first_token_time = time.perf_counter()
                         yield chunk_text
@@ -156,6 +166,15 @@ class OllamaProvider(BaseProvider):
                         prompt_tokens = chunk_obj.get("prompt_eval_count")
                         completion_tokens = chunk_obj.get("eval_count")
                         break
+
+            # Fallback: if model only produced thinking tokens and finished without 'response',
+            # yield the thinking buffer so the client receives an answer rather than silence.
+            if not has_yielded_response and thinking_buffer:
+                fallback_text = "".join(thinking_buffer).strip()
+                if fallback_text:
+                    if first_token_time is None:
+                        first_token_time = time.perf_counter()
+                    yield fallback_text
         except urllib.error.URLError as err:
             if "timed out" in str(err).lower():
                 raise ProviderTimeoutError(f"Ollama streaming timed out: {err}")

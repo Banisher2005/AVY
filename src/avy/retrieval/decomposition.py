@@ -18,7 +18,7 @@ _DECOMPOSITION_SYSTEM_PROMPT = (
 )
 
 _CONJUNCTION_SPLITTERS = re.compile(
-    r"\b(?:and\s+compare|and\s+also|as\s+well\s+as|along\s+with|also\s+explain|plus|while\s+also)\b",
+    r"\b(?:and\s+compare|and\s+explain|and\s+also|and\s+tell|and\s+describe|and\s+what|and\s+how|as\s+well\s+as|along\s+with|also\s+explain|plus|while\s+also|additionally)\b",
     re.IGNORECASE,
 )
 
@@ -34,20 +34,32 @@ class MultiIntentDecomposer:
         sw = Stopwatch()
         clean_text = utterance.strip()
 
-        # Dispatch prompt to provider
-        req = AgentRequest(
-            prompt=f"Decompose the following user query into search queries:\n\"{clean_text}\"",
-            system_prompt=_DECOMPOSITION_SYSTEM_PROMPT,
-            temperature=0.0,
-            stream=False,
+        # Selective decomposition: single intent queries skip provider dispatch
+        is_potentially_compound = bool(
+            _CONJUNCTION_SPLITTERS.search(clean_text)
+            or "?" in clean_text[:-1]
+            or " vs " in clean_text.lower()
+            or " versus " in clean_text.lower()
         )
 
-        try:
-            resp = self.provider.send(req)
-            subquery_strings = self._parse_provider_output(resp.text)
-        except Exception:
-            # Fallback if provider fails or times out
-            subquery_strings = self._rule_based_fallback(clean_text)
+        if not is_potentially_compound:
+            subquery_strings = [clean_text]
+        else:
+            # Dispatch prompt to provider with tight token limit
+            req = AgentRequest(
+                prompt=f"Decompose the following user query into search queries:\n\"{clean_text}\"",
+                system_prompt=_DECOMPOSITION_SYSTEM_PROMPT,
+                temperature=0.0,
+                stream=False,
+                extra_options={"num_predict": 80},
+            )
+            try:
+                resp = self.provider.send(req)
+                subquery_strings = self._parse_provider_output(resp.text)
+                if not subquery_strings:
+                    subquery_strings = self._rule_based_fallback(clean_text)
+            except Exception:
+                subquery_strings = self._rule_based_fallback(clean_text)
 
         # Post-process, clean, and deduplicate queries
         valid_queries = self._clean_and_deduplicate(subquery_strings, fallback=clean_text)

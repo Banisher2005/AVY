@@ -521,16 +521,26 @@ function onPipelineCompleted() {
 
 function onPipelineError(msg) {
   pipelineActive = false;
-  setState(State.ERROR, 'Error', msg);
+  const isNetworkFailure = String(msg).toLowerCase().includes('failed to fetch') || String(msg).toLowerCase().includes('network');
+  const userMessage = isNetworkFailure
+    ? `Unable to reach AVY backend on ${location.host}. Please verify scripts/demo_server.py is running on port ${location.port || 8001}.`
+    : `Pipeline error: ${msg}`;
+
+  setState(State.ERROR, 'Backend Error', userMessage);
 
   if (currentAnswer) {
     const body = currentAnswer.querySelector('.msg-bubble');
     if (body) {
-      body.innerHTML = `<span style="color:var(--red)">⚠️ Pipeline error: ${escHtml(msg)}</span>`;
+      body.innerHTML = `
+        <div style="color:var(--red); font-size:13px; line-height:1.6;">
+          <strong>⚠️ ${escHtml(userMessage)}</strong>
+          ${!isNetworkFailure ? `<details style="margin-top:6px; opacity:0.8; font-size:11px;"><summary>Technical Details</summary><pre style="white-space:pre-wrap; margin-top:4px;">${escHtml(msg)}</pre></details>` : ''}
+        </div>
+      `;
     }
   }
 
-  setTimeout(() => setState(State.IDLE, 'Ready', 'Press to speak'), 4000);
+  setTimeout(() => setState(State.IDLE, 'Ready', 'Press to speak'), 6000);
 }
 
 /* ═══════════════════════════════════════════════════════════════

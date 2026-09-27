@@ -63,7 +63,7 @@ class AVYConfig:
 
     # Web & API Server
     server_host: str = "127.0.0.1"
-    server_port: int = 8000
+    server_port: int = 8001
 
     @classmethod
     def load(cls, **overrides: Any) -> "AVYConfig":
@@ -145,5 +145,5 @@ class AVYConfig:
             telemetry_enabled=bool(data.get("telemetry_enabled", True)),
             telemetry_log=data.get("telemetry_log", DEFAULT_TELEMETRY_LOG),
             server_host=data.get("server_host", "127.0.0.1"),
-            server_port=int(data.get("server_port", 8000)),
+            server_port=int(data.get("server_port", 8001)),
         )
