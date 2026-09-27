@@ -94,6 +94,32 @@ class SessionManager:
         session = self.get_or_create(session_id)
         return list(session.fused_evidence_pool.values())
 
+    def get_citations(self, session_id: str) -> list[dict[str, Any]]:
+        """Retrieve deduplicated citations generated across all turns in this session."""
+        session = self.get_or_create(session_id)
+        seen = set()
+        cits = []
+        for turn in session.turns:
+            for c in turn.citations:
+                cid = c.get("chunk_id") or c.get("title")
+                if cid and cid not in seen:
+                    seen.add(cid)
+                    cits.append(c)
+        return cits
+
+    def list_sessions(self) -> list[dict[str, Any]]:
+        """List active sessions and their metadata."""
+        result = []
+        for sid, sess in self._sessions.items():
+            result.append({
+                "session_id": sid,
+                "turns_count": len(sess.turns),
+                "created_at": sess.created_at,
+                "active_intent": sess.active_intent,
+                "evidence_pool_size": len(sess.fused_evidence_pool),
+            })
+        return result
+
     def clear(self, session_id: str) -> None:
         """Reset session memory."""
         self._sessions.pop(session_id, None)

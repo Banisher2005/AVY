@@ -2,6 +2,7 @@
 
 import json
 import threading
+from collections import deque
 from pathlib import Path
 from typing import Any, Callable
 
@@ -35,6 +36,7 @@ class TelemetryLogger:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self._listeners: list[Callable[[TelemetryEvent], None]] = []
+        self._recent_events: deque[TelemetryEvent] = deque(maxlen=2000)
 
     def subscribe(self, callback: Callable[[TelemetryEvent], None]) -> None:
         """Register a callback for real-time telemetry streaming."""
@@ -56,6 +58,9 @@ class TelemetryLogger:
             metadata=meta,
         )
 
+        with self._lock:
+            self._recent_events.append(record)
+
         if not self.enabled:
             return record
 
@@ -76,6 +81,17 @@ class TelemetryLogger:
                 pass
 
         return record
+
+    def get_events(self, session_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        """Retrieve recent telemetry records, optionally filtered by session_id."""
+        with self._lock:
+            events = list(self._recent_events)
+
+        if session_id:
+            events = [e for e in events if e.session_id == session_id]
+
+        events = events[-limit:]
+        return [e.to_dict() for e in events]
 
 
 _GLOBAL_TELEMETRY: TelemetryLogger | None = None

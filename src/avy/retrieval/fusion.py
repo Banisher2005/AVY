@@ -56,6 +56,7 @@ class EvidenceFusion:
         for rank, cid in enumerate(sorted_chunks[:top_n], start=1):
             cand = chunk_map[cid]
             norm_score = rrf_scores[cid] / max_score if max_score > 0 else rrf_scores[cid]
+            best_vector_score = max(c.score for c in candidates if c.chunk_id == cid)
 
             fused_list.append(
                 FusedEvidence(
@@ -65,6 +66,7 @@ class EvidenceFusion:
                     title=cand.title,
                     text=cand.chunk_text,
                     rrf_score=norm_score,
+                    vector_score=best_vector_score,
                     rank=rank,
                     matched_queries=matched_queries[cid],
                     metadata=cand.metadata,

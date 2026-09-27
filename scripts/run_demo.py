@@ -15,6 +15,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run AVY interactive CLI scenarios")
     parser.add_argument("--scenario", default=None, help="Filter by scenario ID (e.g. A, B, C, D, E, F)")
+    parser.add_argument("--provider", default=None, help="LLM Provider override (e.g. mock, ollama)")
     args = parser.parse_args()
-    config = AVYConfig.load()
+
+    overrides = {}
+    if args.provider:
+        overrides["provider"] = args.provider
+    config = AVYConfig.load(**overrides)
     cmd_demo(args, config)

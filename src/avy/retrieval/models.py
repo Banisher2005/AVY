@@ -114,6 +114,7 @@ class FusedEvidence:
     title: str
     text: str
     rrf_score: float
+    vector_score: float = 0.0
     rerank_score: float | None = None
     rank: int = 1
     matched_queries: list[str] = field(default_factory=list)
@@ -127,6 +128,7 @@ class FusedEvidence:
             "title": self.title,
             "text": self.text,
             "rrf_score": round(self.rrf_score, 4),
+            "vector_score": round(self.vector_score, 4),
             "rerank_score": round(self.rerank_score, 4) if self.rerank_score is not None else None,
             "rank": self.rank,
             "matched_queries": self.matched_queries,

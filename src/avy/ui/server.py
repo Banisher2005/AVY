@@ -25,6 +25,10 @@ class QueryRequest(BaseModel):
     is_final: bool = True
 
 
+class CreateSessionRequest(BaseModel):
+    session_id: str | None = None
+
+
 class ScenarioRequest(BaseModel):
     scenario_id: str
     session_id: str | None = None
@@ -64,9 +68,84 @@ def create_app(engine: StreamingLiveRAGEngine | None = None, config: AVYConfig |
         return {
             "status": "healthy",
             "provider": live_engine.provider.get_model_name(),
+            "provider_type": live_engine.provider.__class__.__name__,
             "provider_available": live_engine.provider.is_available(),
             "indexed_chunks": len(live_engine.vectorstore._chunks),
+            "vector_dimension": live_engine.vectorstore.dimension,
+            "embeddings_model": live_engine.embeddings.model_name,
             "reranker_enabled": live_engine.config.reranker_enabled,
+            "reranker_model": live_engine.config.reranker_model,
+            "active_sessions": len(live_engine.session_manager._sessions),
+            "config": {
+                "top_k": live_engine.config.top_k,
+                "rrf_k": live_engine.config.rrf_k,
+                "similarity_threshold": live_engine.config.similarity_threshold,
+                "early_retrieval_enabled": live_engine.config.early_retrieval_enabled,
+                "telemetry_enabled": live_engine.config.telemetry_enabled,
+            },
+        }
+
+    @app.post("/api/session")
+    async def create_session(req: CreateSessionRequest | None = None) -> dict[str, Any]:
+        sid = req.session_id if req and req.session_id else None
+        sess = live_engine.session_manager.get_or_create(sid)
+        return {
+            "session_id": sess.session_id,
+            "created_at": sess.created_at,
+            "status": "active",
+            "turns_count": len(sess.turns),
+        }
+
+    @app.get("/api/sessions")
+    async def list_sessions() -> list[dict[str, Any]]:
+        return live_engine.session_manager.list_sessions()
+
+    @app.get("/api/session/{session_id}")
+    async def get_session(session_id: str) -> Any:
+        if session_id not in live_engine.session_manager._sessions:
+            return JSONResponse(status_code=404, content={"error": f"Session '{session_id}' not found"})
+        sess = live_engine.session_manager.get_or_create(session_id)
+        return {
+            "session_id": sess.session_id,
+            "created_at": sess.created_at,
+            "active_intent": sess.active_intent,
+            "turns_count": len(sess.turns),
+            "turns": [
+                {
+                    "turn_id": t.turn_id,
+                    "timestamp": t.timestamp,
+                    "user_utterance": t.user_utterance,
+                    "controller_state": t.controller_state,
+                    "decomposed_queries": t.decomposed_queries,
+                    "assistant_response": t.assistant_response,
+                    "citations": t.citations,
+                }
+                for t in sess.turns
+            ],
+            "evidence_pool_size": len(sess.fused_evidence_pool),
+        }
+
+    @app.delete("/api/session/{session_id}")
+    async def clear_session(session_id: str) -> dict[str, Any]:
+        live_engine.session_manager.clear(session_id)
+        return {"session_id": session_id, "status": "cleared"}
+
+    @app.get("/api/telemetry/{session_id}")
+    async def get_session_telemetry(session_id: str, limit: int = 100) -> dict[str, Any]:
+        events = live_engine.telemetry.get_events(session_id=session_id, limit=limit)
+        return {
+            "session_id": session_id,
+            "count": len(events),
+            "events": events,
+        }
+
+    @app.get("/api/citations/{session_id}")
+    async def get_session_citations(session_id: str) -> dict[str, Any]:
+        citations = live_engine.session_manager.get_citations(session_id)
+        return {
+            "session_id": session_id,
+            "count": len(citations),
+            "citations": citations,
         }
 
     @app.get("/api/scenarios")

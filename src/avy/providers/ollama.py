@@ -144,7 +144,7 @@ class OllamaProvider(BaseProvider):
                     except json.JSONDecodeError:
                         continue
 
-                    chunk_text = chunk_obj.get("response", "")
+                    chunk_text = chunk_obj.get("response", "") or chunk_obj.get("thinking", "")
                     if chunk_text:
                         if first_token_time is None:
                             first_token_time = time.perf_counter()

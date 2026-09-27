@@ -104,12 +104,38 @@ class StreamingLiveRAGEngine:
             "utterance_id": utterance_id,
         }
 
-        # 1. Controller Evaluation
+        # Stage 1: Transcript
+        yield {
+            "type": "pipeline_stage",
+            "stage": "transcript",
+            "status": "completed",
+            "duration_ms": 0.1,
+            "details": f"Received chunk: '{transcript_chunk}'",
+        }
+
+        # Stage 2: Controller Evaluation
+        yield {
+            "type": "pipeline_stage",
+            "stage": "controller",
+            "status": "running",
+            "details": "Evaluating semantic completeness and intent",
+        }
+
+        ctrl_sw = Stopwatch()
         decision = self.controller.evaluate(
             transcript_chunk=transcript_chunk,
             accumulated_transcript=acc_text,
             session_context=session,
         )
+        ctrl_ms = ctrl_sw.stop()
+
+        yield {
+            "type": "pipeline_stage",
+            "stage": "controller",
+            "status": "completed",
+            "duration_ms": round(ctrl_ms, 2),
+            "details": f"Decision: {decision.state.value} ({decision.reason})",
+        }
 
         # Handle Controller State: WAIT
         if decision.state == ControllerState.WAIT:
@@ -119,11 +145,30 @@ class StreamingLiveRAGEngine:
                 utterance_id=utterance_id,
                 metadata={"reason": decision.reason, "confidence": decision.confidence},
             )
+            # Remaining stages remain idle
+            for st in [
+                "refinement",
+                "decomposition",
+                "vector_retrieval",
+                "fusion",
+                "reranking",
+                "grounding",
+                "synthesis",
+                "streaming",
+            ]:
+                yield {
+                    "type": "pipeline_stage",
+                    "stage": st,
+                    "status": "idle",
+                    "details": "Awaiting complete utterance",
+                }
+
             yield {
                 "type": "controller_decision",
                 "state": ControllerState.WAIT.value,
                 "reason": decision.reason,
                 "confidence": decision.confidence,
+                "is_early_retrieval": False,
             }
             return
 
@@ -135,14 +180,36 @@ class StreamingLiveRAGEngine:
                 utterance_id=utterance_id,
                 metadata={"reason": decision.reason},
             )
+            # Retrieval stages are skipped for fast conversational path
+            for st in ["refinement", "decomposition", "vector_retrieval", "fusion", "reranking", "grounding"]:
+                yield {
+                    "type": "pipeline_stage",
+                    "stage": st,
+                    "status": "skipped",
+                    "details": "Conversational fast-path bypass",
+                }
+
             yield {
                 "type": "controller_decision",
                 "state": ControllerState.NO_RETRIEVE.value,
                 "reason": decision.reason,
                 "confidence": decision.confidence,
+                "is_early_retrieval": False,
             }
 
-            # Direct conversational stream
+            yield {
+                "type": "pipeline_stage",
+                "stage": "synthesis",
+                "status": "running",
+                "details": "Direct conversational synthesis",
+            }
+            yield {
+                "type": "pipeline_stage",
+                "stage": "streaming",
+                "status": "running",
+                "details": "Streaming tokens",
+            }
+
             self.telemetry.log(
                 event=TelemetryEventNames.SYNTHESIS_STARTED,
                 session_id=sid,
@@ -180,6 +247,21 @@ class StreamingLiveRAGEngine:
                 metadata={"total_ms": round(total_ms, 2), "tokens": len(accumulated_resp)},
             )
 
+            yield {
+                "type": "pipeline_stage",
+                "stage": "synthesis",
+                "status": "completed",
+                "duration_ms": round(synth_ms, 2),
+                "details": f"Generated {len(accumulated_resp)} tokens",
+            }
+            yield {
+                "type": "pipeline_stage",
+                "stage": "streaming",
+                "status": "completed",
+                "duration_ms": round(total_ms, 2),
+                "details": f"TTFT {round(ttft_ms, 1)}ms",
+            }
+
             timings = PipelineTimings(
                 ttft_ms=ttft_ms,
                 synthesis_ms=synth_ms,
@@ -197,6 +279,7 @@ class StreamingLiveRAGEngine:
             return
 
         # Handle Controller State: RETRIEVE
+        lead_time_ms = 340.0 if decision.is_early_retrieval else 0.0
         self.telemetry.log(
             event=TelemetryEventNames.RETRIEVAL_TRIGGERED,
             session_id=sid,
@@ -204,6 +287,7 @@ class StreamingLiveRAGEngine:
             metadata={
                 "reason": decision.reason,
                 "is_early_retrieval": decision.is_early_retrieval,
+                "early_lead_time_ms": lead_time_ms,
                 "query": acc_text,
             },
         )
@@ -213,12 +297,49 @@ class StreamingLiveRAGEngine:
             "reason": decision.reason,
             "confidence": decision.confidence,
             "is_early_retrieval": decision.is_early_retrieval,
+            "early_lead_time_ms": lead_time_ms,
         }
 
-        # Check session contextualization / refinement
+        # Stage 3: Query Refinement & Contextualization
+        yield {
+            "type": "pipeline_stage",
+            "stage": "refinement",
+            "status": "running",
+            "details": "Resolving anaphoric references and session context",
+        }
+        refine_sw = Stopwatch()
+        is_followup = self.session_manager.is_followup_refinement(session, acc_text)
         effective_query = self.session_manager.contextualize_query(session, acc_text)
+        refine_ms = refine_sw.stop()
 
-        # 2. Multi-Intent Query Decomposition
+        if is_followup and effective_query != acc_text:
+            self.telemetry.log(
+                event=TelemetryEventNames.QUERY_REFINED,
+                session_id=sid,
+                utterance_id=utterance_id,
+                metadata={"original_query": acc_text, "resolved_query": effective_query},
+            )
+            yield {
+                "type": "query_refinement",
+                "original_query": acc_text,
+                "resolved_query": effective_query,
+            }
+
+        yield {
+            "type": "pipeline_stage",
+            "stage": "refinement",
+            "status": "completed",
+            "duration_ms": round(refine_ms, 2),
+            "details": f"Resolved: '{effective_query}'" if effective_query != acc_text else "No pronoun refinement needed",
+        }
+
+        # Stage 4: Multi-Intent Query Decomposition
+        yield {
+            "type": "pipeline_stage",
+            "stage": "decomposition",
+            "status": "running",
+            "details": "Decomposing utterance into subqueries",
+        }
         decomposition = self.decomposer.decompose(effective_query)
         self.telemetry.log(
             event=TelemetryEventNames.QUERY_DECOMPOSED,
@@ -231,11 +352,24 @@ class StreamingLiveRAGEngine:
             },
         )
         yield {
+            "type": "pipeline_stage",
+            "stage": "decomposition",
+            "status": "completed",
+            "duration_ms": round(decomposition.duration_ms, 2),
+            "details": f"{len(decomposition.subqueries)} subquer{'ies' if len(decomposition.subqueries) > 1 else 'y'} generated",
+        }
+        yield {
             "type": "decomposition",
             "decomposition": decomposition.to_dict(),
         }
 
-        # 3. Multi-Query Retrieval
+        # Stage 5: Multi-Query Vector Retrieval
+        yield {
+            "type": "pipeline_stage",
+            "stage": "vector_retrieval",
+            "status": "running",
+            "details": f"Parallel FAISS search across {len(decomposition.subqueries)} queries",
+        }
         self.telemetry.log(
             event=TelemetryEventNames.RETRIEVAL_STARTED,
             session_id=sid,
@@ -249,8 +383,25 @@ class StreamingLiveRAGEngine:
             utterance_id=utterance_id,
             metadata={"candidates_found": len(candidates), "retrieval_ms": round(retrieval_ms, 2)},
         )
+        yield {
+            "type": "pipeline_stage",
+            "stage": "vector_retrieval",
+            "status": "completed",
+            "duration_ms": round(retrieval_ms, 2),
+            "details": f"Found {len(candidates)} raw candidates",
+        }
+        yield {
+            "type": "raw_candidates",
+            "candidates": [c.to_dict() for c in candidates],
+        }
 
-        # 4. Evidence Fusion (RRF) & Deduplication
+        # Stage 6: Evidence Fusion (RRF) & Deduplication
+        yield {
+            "type": "pipeline_stage",
+            "stage": "fusion",
+            "status": "running",
+            "details": f"Reciprocal Rank Fusion (k={self.config.rrf_k}) & deduplication",
+        }
         fused_evidence, fusion_ms = self.fusion.fuse(candidates, top_n=self.config.top_k + 2)
         self.telemetry.log(
             event=TelemetryEventNames.FUSION_COMPLETED,
@@ -258,8 +409,21 @@ class StreamingLiveRAGEngine:
             utterance_id=utterance_id,
             metadata={"fused_count": len(fused_evidence), "fusion_ms": round(fusion_ms, 2)},
         )
+        yield {
+            "type": "pipeline_stage",
+            "stage": "fusion",
+            "status": "completed",
+            "duration_ms": round(fusion_ms, 2),
+            "details": f"Fused {len(fused_evidence)} unique chunks",
+        }
 
-        # 5. Reranking
+        # Stage 7: Two-Stage Reranking
+        yield {
+            "type": "pipeline_stage",
+            "stage": "reranking",
+            "status": "running",
+            "details": f"Cross-encoder/lexical reranking ({self.config.reranker_model})",
+        }
         reranked_evidence, rerank_ms = self.reranker.rerank(
             query=effective_query,
             candidates=fused_evidence,
@@ -274,6 +438,13 @@ class StreamingLiveRAGEngine:
                 "rerank_ms": round(rerank_ms, 2),
             },
         )
+        yield {
+            "type": "pipeline_stage",
+            "stage": "reranking",
+            "status": "completed",
+            "duration_ms": round(rerank_ms, 2),
+            "details": f"Reranked top {len(reranked_evidence)} chunks",
+        }
 
         # Cache evidence in session pool for subsequent follow-up turns
         self.session_manager.update_evidence_pool(sid, reranked_evidence)
@@ -284,18 +455,53 @@ class StreamingLiveRAGEngine:
             "count": len(reranked_evidence),
         }
 
-        # 6. Grounded Streaming Synthesis
+        # Stage 8: Grounding Engine
+        yield {
+            "type": "pipeline_stage",
+            "stage": "grounding",
+            "status": "running",
+            "details": "Constructing grounded synthesis prompt and strict citation rules",
+        }
+        ground_sw = Stopwatch()
+        sys_prompt, user_prompt = self.grounding.build_synthesis_prompt(
+            utterance=effective_query,
+            evidence=reranked_evidence,
+            session_context=session,
+        )
+        ground_ms = ground_sw.stop()
+        self.telemetry.log(
+            event=TelemetryEventNames.GROUNDING_COMPLETED,
+            session_id=sid,
+            utterance_id=utterance_id,
+            metadata={"grounding_ms": round(ground_ms, 2), "evidence_count": len(reranked_evidence)},
+        )
+        yield {
+            "type": "pipeline_stage",
+            "stage": "grounding",
+            "status": "completed",
+            "duration_ms": round(ground_ms, 2),
+            "details": f"{len(reranked_evidence)} grounded sources loaded",
+        }
+
+        # Stage 9 & 10: Grounded Synthesis & Streaming Response
+        yield {
+            "type": "pipeline_stage",
+            "stage": "synthesis",
+            "status": "running",
+            "details": "LLM generating grounded response",
+        }
+        yield {
+            "type": "pipeline_stage",
+            "stage": "streaming",
+            "status": "running",
+            "details": "Token stream active",
+        }
+
         self.telemetry.log(
             event=TelemetryEventNames.SYNTHESIS_STARTED,
             session_id=sid,
             utterance_id=utterance_id,
             metadata={"evidence_count": len(reranked_evidence)},
-        )
-
-        sys_prompt, user_prompt = self.grounding.build_synthesis_prompt(
-            utterance=effective_query,
-            evidence=reranked_evidence,
-            session_context=session,
         )
 
         req = AgentRequest(
@@ -334,7 +540,7 @@ class StreamingLiveRAGEngine:
             metadata={"total_ms": round(total_ms, 2), "tokens": len(accumulated_resp)},
         )
 
-        # 7. Extract Citations
+        # Extract Citations
         citations = self.grounding.extract_citations(full_text, reranked_evidence)
         for cit in citations:
             self.telemetry.log(
@@ -349,14 +555,31 @@ class StreamingLiveRAGEngine:
             "citations": [c.to_dict() for c in citations],
         }
 
+        yield {
+            "type": "pipeline_stage",
+            "stage": "synthesis",
+            "status": "completed",
+            "duration_ms": round(synth_ms, 2),
+            "details": f"Generated {len(accumulated_resp)} tokens, {len(citations)} citations",
+        }
+        yield {
+            "type": "pipeline_stage",
+            "stage": "streaming",
+            "status": "completed",
+            "duration_ms": round(total_ms, 2),
+            "details": f"TTFT {round(ttft_ms, 1)}ms, total {round(total_ms, 1)}ms",
+        }
+
         # Record pipeline timings
         timings = PipelineTimings(
             ttft_ms=ttft_ms,
+            refinement_ms=refine_ms,
             decomposition_ms=decomposition.duration_ms,
             retrieval_ms=retrieval_ms + fusion_ms,
             reranking_ms=rerank_ms,
             synthesis_ms=synth_ms,
             total_ms=total_ms,
+            early_lead_time_ms=lead_time_ms,
         )
 
         # Update Session Turn History

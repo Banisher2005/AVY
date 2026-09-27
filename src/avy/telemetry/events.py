@@ -12,15 +12,18 @@ class TelemetryEventNames:
     RETRIEVAL_WAIT = "retrieval.wait"
     RETRIEVAL_TRIGGERED = "retrieval.triggered"
     RETRIEVAL_SKIPPED = "retrieval.skipped"
+    QUERY_REFINED = "query.refined"
     QUERY_DECOMPOSED = "query.decomposed"
     RETRIEVAL_STARTED = "retrieval.started"
     RETRIEVAL_COMPLETED = "retrieval.completed"
     FUSION_COMPLETED = "fusion.completed"
     RERANK_COMPLETED = "rerank.completed"
+    GROUNDING_COMPLETED = "grounding.completed"
     SYNTHESIS_STARTED = "synthesis.started"
     SYNTHESIS_FIRST_TOKEN = "synthesis.first_token"
     SYNTHESIS_COMPLETED = "synthesis.completed"
     CITATION_GENERATED = "citation.generated"
+    PIPELINE_STAGE = "pipeline.stage"
     PIPELINE_ERROR = "pipeline.error"
 
 

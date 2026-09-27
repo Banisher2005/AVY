@@ -428,17 +428,101 @@ avy stream "Compare Exynos 2400 with previous generation and explain battery eff
 
 ---
 
-## 23. Testing Suite
+## 23. Production Web Dashboard & UI Experience
 
-Run the complete test suite covering the controller, decomposition, vector retrieval, fusion, reranking, session refinement, grounding, citations, and telemetry:
+AVY's centerpiece is a **dark, research-lab command center dashboard** designed specifically for live hackathon demonstration:
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  [AVY]  AVY Streaming Live RAG Assistant   [• LIVE CONNECTED]  [MODEL: qwen3:4b]  [CORPUS: 32]   │
+├──────────────────────────────┬────────────────────────────────────┬──────────────────────────────┤
+│ 🎙️ SPEECH & SCENARIOS        │ 💬 LIVE RAG CONVERSATION           │ 🔄 TECHNICAL DEEP-DIVE       │
+│                              │                                    │                              │
+│ 1-Click Benchmark Matrix:    │ [User]                             │ Tabs:                        │
+│ [A: Early Retrieval]         │ "Compare Samsung Exynos 2400..."   │ ┌────────┬──────┬─────┬────┐ │
+│ [B: Fast-Path NO_RETRIEVE]   │                                    │ │Trace 10│Decomp│ RRF │KPIs│ │
+│ [C: Incomplete WAIT]         │ 🔗 Refined: "Galaxy S24 Ultra..."  │ └────────┴──────┴─────┴────┘ │
+│ [D: Compound Multi-Intent]   │                                    │                              │
+│ [E: Anaphora Refinement]     │ [AVY Assistant]                    │ 10-Stage Pipeline Trace:     │
+│ [F: Comparative Deep-Dive]   │ "The Exynos 2400 features a        │ 01 Transcript Chunk      [✓] │
+│                              │  10-core CPU with AMD Xclipse      │ 02 Retrieval Controller  [✓] │
+│ Audio Chunk Simulator:       │  940 GPU [1]. In terms of battery  │ 03 Query Refinement      [✓] │
+│ [1] "Tell me about..."       │  efficiency, it achieves 22%       │ 04 Intent Decomposition  [✓] │
+│ [2] "latest processor..."    │  longer battery life [2]."         │ 05 Vector Retrieval      [✓] │
+│ [3] "and compare battery..." │                                    │ 06 RRF Evidence Fusion   [✓] │
+│                              │ Grounded Sources Tray:             │ 07 Two-Stage Reranking   [✓] │
+│ Live Transcript Feed:        │ [[1] exynos_2400.md]               │ 08 Grounding Engine      [✓] │
+│ "Chunk 1: Tell me..."        │ [[2] battery_power.md]             │ 09 Grounded Synthesis    [✓] │
+│                              │                                    │ 10 Streaming Response    [✓] │
+│ 3-State Controller Indicator:│ (Click [1] to open Evidence        │                              │
+│ [ WAIT ] [• RETRIEVE] [ NO ] │  Inspector Drawer/Modal)           │ Latency KPIs:                │
+│                              │                                    │ TTFT: 142ms  Total: 840ms    │
+│ ⚡ Early Retrieval Banner:   │                                    │ Lead Time Advantage: +340ms  │
+│ [Speech: ======>           ] │                                    │                              │
+│ [Search: ========> (+340ms)] │                                    │                              │
+└──────────────────────────────┴────────────────────────────────────┴──────────────────────────────┘
+```
+
+### Key UI Features:
+1. **Interactive Evidence Inspector (Modal / Slide-Over)**:
+   Clicking any `[1]`, `[2]` citation marker opens an inspection modal displaying:
+   - Document Title & Source Markdown file
+   - Chunk ID & Chunk Index
+   - Initial Vector Score, RRF Score, and Cross-Encoder Rerank Score
+   - Matched Subquery & Keyword Highlights
+   - Exact supporting evidence passage
+2. **10-Stage Real-Time Pipeline Trace**:
+   Visually monitors every phase of the pipeline in real-time (`idle`, `running`, `completed`, `skipped`) with millisecond timestamps.
+3. **Score Comparator (Vector → RRF → Rerank)**:
+   Explores how candidates are re-ordered across the 3 stages.
+4. **Early Retrieval Progress Bar**:
+   Illustrates speech audio streaming vs early vector search overlap and the **+340ms lead-time advantage**.
+
+---
+
+## 24. REST & SSE API Reference
+
+AVY exposes a clean, high-performance API suitable for production integration:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | System health, loaded model, vector dimension, chunk count, and configuration |
+| `GET` | `/api/scenarios` | List benchmark scenarios (A through F) with expected controller states |
+| `POST` | `/api/scenarios/run` | Stream simulated audio chunks for a scenario via Server-Sent Events (SSE) |
+| `POST` | `/api/stream/rag` | Stream live RAG pipeline events and tokens token-by-token via SSE |
+| `POST` | `/api/session` | Create or reset an active conversational session |
+| `GET` | `/api/session/{id}` | Inspect multi-turn session history, active intent, and evidence pool |
+| `DELETE` | `/api/session/{id}` | Clear session memory |
+| `GET` | `/api/sessions` | List all active sessions |
+| `GET` | `/api/telemetry/{id}` | Retrieve structured telemetry events for a session |
+| `GET` | `/api/citations/{id}` | Retrieve deduplicated citations generated in a session |
+
+---
+
+## 25. Testing Suite
+
+Run the complete 37-test automated test suite:
 ```bash
 pytest tests/ -v
 # Or: make test
 ```
 
+Coverage includes:
+- `tests/test_controller.py`: WAIT, RETRIEVE, NO_RETRIEVE state classification & early retrieval
+- `tests/test_decomposition.py`: Multi-intent JSON extraction, markdown fences, fallback splitting
+- `tests/test_retrieval.py`: FAISS vector search, dimension matching, save/load persistence
+- `tests/test_fusion.py`: Reciprocal Rank Fusion (RRF), score normalization, multi-query deduplication
+- `tests/test_reranker.py`: Cross-encoder & lexical reranking, score re-ordering
+- `tests/test_session.py`: Pronoun/anaphora resolution, multi-turn evidence pool caching
+- `tests/test_grounding.py`: Prompt synthesis, citation extraction, groundedness scoring
+- `tests/test_streaming.py`: SSE event generator, token streaming, timing measurements
+- `tests/test_telemetry.py`: Event logging, thread-safety, credential scrubbing
+- `tests/test_api.py`: REST endpoints, session CRUD, telemetry querying, citations lookup
+- `tests/test_end_to_end.py`: End-to-end execution of all 6 hackathon scenarios
+
 ---
 
-## 24. Demo Scenarios
+## 26. Demo Scenarios
 
 AVY provides built-in demo scenarios matching the hackathon specifications:
 
@@ -460,7 +544,7 @@ python scripts/run_demo.py
 
 ---
 
-## 25. Limitations & Future Roadmap
+## 27. Limitations & Future Roadmap
 
 - **Audio VAD Integration**: The current demonstration ingests text transcript chunks. Future iterations will couple directly with client-side WebRTC / Silero VAD for sub-50ms acoustic voice activity detection.
 - **Dynamic Speculative Retrieval**: Exploring speculative multi-path decoding where top-2 hypotheses from an ASR acoustic model trigger dual parallel vector searches.

@@ -38,6 +38,7 @@ class LocalDenseEmbedding(BaseEmbedding):
 
     def __init__(self, dimension: int = 256) -> None:
         self._dim = dimension
+        self.model_name = "local-dense-hash"
 
     @property
     def dimension(self) -> int:
