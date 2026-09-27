@@ -93,7 +93,14 @@ def create_app(
     async def index() -> HTMLResponse:
         html_file = STATIC_DIR / "index.html"
         if html_file.is_file():
-            return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+            return HTMLResponse(
+                content=html_file.read_text(encoding="utf-8"),
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            )
         return HTMLResponse("<h1>AVY — Streaming Live RAG</h1><p>Frontend not found.</p>")
 
     # -----------------------------------------------------------------------

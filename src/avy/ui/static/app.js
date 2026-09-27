@@ -29,15 +29,15 @@ const State = Object.freeze({
 });
 
 const STAGE_META = {
-  transcript:      { n: '01', label: 'Transcript Chunk' },
-  controller:      { n: '02', label: 'Retrieval Controller' },
+  transcript:      { n: '01', label: 'Utterance Received' },
+  controller:      { n: '02', label: 'Retrieval Decision' },
   refinement:      { n: '03', label: 'Query Refinement' },
-  decomposition:   { n: '04', label: 'Intent Decomposition' },
-  vector_retrieval:{ n: '05', label: 'Vector Retrieval' },
-  fusion:          { n: '06', label: 'RRF Evidence Fusion' },
-  reranking:       { n: '07', label: 'Two-Stage Reranking' },
-  grounding:       { n: '08', label: 'Grounding Engine' },
-  synthesis:       { n: '09', label: 'Grounded Synthesis' },
+  decomposition:   { n: '04', label: 'Intent Analysis' },
+  vector_retrieval:{ n: '05', label: 'Evidence Search' },
+  fusion:          { n: '06', label: 'Evidence Fusion (RRF)' },
+  reranking:       { n: '07', label: 'Evidence Reranking' },
+  grounding:       { n: '08', label: 'Grounding Check' },
+  synthesis:       { n: '09', label: 'Generating Answer' },
   streaming:       { n: '10', label: 'Streaming Response' },
 };
 
